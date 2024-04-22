@@ -1,0 +1,31 @@
+{{ ansible_managed | comment }}
+sources:
+  nginx_access_log:
+    type: file
+    ignore_older_secs: 600
+    include:
+      - /var/log/nginx/access.log
+    read_from: beginning
+
+transforms:
+  nginx_access_log_parser:
+    inputs:
+      - nginx_access_log
+    type: remap
+    source: |
+      . = parse_json!(.message)
+      .hostname = "{{ ansible_hostname }}"
+
+sinks:
+  es:
+    type: elasticsearch
+    bulk:
+      index: "nginx-%Y-%m-%d"
+    inputs:
+      - nginx_access_log_parser
+    endpoints:
+      - https://logs.example.com:9200
+    tls:
+      ca_file: /etc/vector/ssl/root-ca.pem
+      crt_file: /etc/vector/ssl/filebeat.pem
+      key_file: /etc/vector/ssl/filebeat.key

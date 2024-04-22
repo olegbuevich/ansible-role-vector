@@ -1,0 +1,51 @@
+- name: Install Vector
+  ansible.builtin.include_tasks: "install-{{ ansible_os_family }}.yml"
+
+- name: Provide config file
+  ansible.builtin.template:
+    src: etc/vector/vector.yaml.j2
+    dest: /etc/vector/vector.yaml
+    mode: "0400"
+    owner: vector
+    group: vector
+  notify:
+    - Restart vector
+
+- name: Set configfile location
+  ansible.builtin.lineinfile:
+    path: /etc/default/vector
+    regexp: '^VECTOR_CONFIG='
+    line: VECTOR_CONFIG=/etc/vector/vector.yaml
+  notify:
+    - Restart vector
+
+# TODO: vector validate /etc/vector/vector*.toml
+
+- name: Create certificates directory
+  ansible.builtin.file:
+    path: /etc/vector/ssl
+    state: directory
+    mode: "0700"
+    owner: vector
+    group: vector
+
+- name: Provide certificates
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "/etc/vector/ssl/{{ item.filename }}"
+    owner: vector
+    group: vector
+    mode: "0400"
+  with_items:
+    - "{{ opensearch_root_ca_certificate }}"
+    - "{{ filebeat_certificate }}"
+    - "{{ filebeat_key }}"
+  no_log: true
+  notify:
+    - Restart vector
+
+- name: Ensure vector is started and enabled to start at boot.
+  ansible.builtin.service:
+    name: vector
+    state: started
+    enabled: true

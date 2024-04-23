@@ -1,20 +1,12 @@
 ---
 
-- name: Import the public GPG key
-  ansible.builtin.apt_key:
-    state: present
-    url: "{{ vector_packages_gpg_key }}"
-
-- name: Create a repository file
+- name: Download package
   ansible.builtin.get_url:
-    url: "https://repositories.timber.io/public/vector/config.deb.txt?distro=ubuntu&codename={{ ansible_distribution_release }}"
-    dest: /etc/apt/sources.list.d/timber-vector.list
-    mode: "0644"
-    owner: root
-    group: root
+    url: "https://packages.timber.io/vector/{{ vector_version }}/vector-{{ vector_version }}-1.{{ ansible_architecture }}.rpm"
+    dest: /tmp/vector-{{ vector_version }}.deb
+    mode: "0400"
 
-- name: Update apt cache.
+- name: Install package
   ansible.builtin.apt:
-    update_cache: true
-    cache_valid_time: 3600
-  changed_when: false
+    deb: /tmp/vector-{{ vector_version }}.deb
+    state: present

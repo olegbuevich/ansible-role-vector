@@ -1,5 +1,5 @@
 ---
 - name: Install and configure vector (https://vector.dev/)
-  hosts: '{{ target | default("all") }}'
+  hosts: '{{ target | default("vector") }}'
   roles:
     - role: '{{ playbook_dir }}'

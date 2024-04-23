@@ -1,25 +1,14 @@
 ---
 
-- name: Import the public GPG key
-  ansible.builtin.rpm_key:
-    key: "{{ vector_packages_gpg_key }}"
-    state: present
-
-- name: Create a repository file
+- name: Download package
   ansible.builtin.get_url:
-    url: "https://repositories.timber.io/public/vector/config.rpm.txt?distro=el&codename={{ ansible_distribution_major_version }}"
-    dest: /etc/yum.repos.d/timber-vector.repo
-    mode: "0644"
-    owner: root
-    group: root
-  register: vector_yum_repository
-
-- name: Clean YUM cache
-  ansible.builtin.command: yum clean metadata
-  when: vector_yum_repository.changed
-  changed_when: true
+    url: "https://packages.timber.io/vector/{{ vector_version }}/vector-{{ vector_version }}-1.{{ ansible_architecture }}.rpm"
+    dest: /tmp/vector-{{ vector_version }}.rpm
+    mode: "0400"
 
 - name: Install package
   ansible.builtin.yum:
-    name: vector
+    name: /tmp/vector-{{ vector_version }}.rpm
     state: present
+  notify:
+    - Restart vector

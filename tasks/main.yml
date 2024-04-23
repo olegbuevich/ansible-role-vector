@@ -1,35 +1,51 @@
-- name: Install Vector
+---
+
+- name: Get installed version
+  ansible.builtin.command: vector --version
+  register: vector_version_output
+  changed_when: false
+  ignore_errors: true
+  check_mode: false
+
+- name: Set installed version
+  when: vector_version_output.rc == 0
+  ansible.builtin.set_fact:
+    installed_vector_version: "{{ vector_version_output.stdout_lines[0].split(' ')[1] }}"
+
+- name: Install
+  when: vector_version_output.rc != 0 or installed_vector_version is version(vector_version, '<')
   ansible.builtin.include_tasks: "install-{{ ansible_os_family }}.yml"
 
 - name: Provide config file
   ansible.builtin.template:
-    src: etc/vector/vector.yaml.j2
-    dest: /etc/vector/vector.yaml
+    src: vector.yaml.j2
+    dest: "{{ vector_config_file }}"
     mode: "0400"
     owner: vector
     group: vector
+    validate: vector validate %s
   notify:
     - Restart vector
 
-- name: Set configfile location
+- name: Set config file location
   ansible.builtin.lineinfile:
     path: /etc/default/vector
     regexp: '^VECTOR_CONFIG='
-    line: VECTOR_CONFIG=/etc/vector/vector.yaml
+    line: "VECTOR_CONFIG={{ vector_config_file }}"
   notify:
     - Restart vector
 
-# TODO: vector validate /etc/vector/vector*.toml
-
-- name: Create certificates directory
+- name: Create SSL certificates directory
+  when: vector_ssl_certificates | length > 0
   ansible.builtin.file:
-    path: /etc/vector/ssl
+    path: "{{ vector_ssl_cert_dir }}/ssl"
     state: directory
     mode: "0700"
     owner: vector
     group: vector
 
-- name: Provide certificates
+- name: Provide SSL certificates
+  when: vector_ssl_certificates | length > 0
   ansible.builtin.copy:
     content: "{{ item.content }}"
     dest: "/etc/vector/ssl/{{ item.filename }}"
@@ -37,15 +53,14 @@
     group: vector
     mode: "0400"
   with_items:
-    - "{{ opensearch_root_ca_certificate }}"
-    - "{{ filebeat_certificate }}"
-    - "{{ filebeat_key }}"
+    - "{{ vector_ssl_certificates }}"
   no_log: true
   notify:
     - Restart vector
 
-- name: Ensure vector is started and enabled to start at boot.
+- name: Ensure vector is started and enabled to start at boot
   ansible.builtin.service:
     name: vector
+    daemon_reload: true
     state: started
     enabled: true

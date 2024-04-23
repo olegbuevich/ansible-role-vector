@@ -1,3 +1,28 @@
 ---
 
-vector_packages_gpg_key: https://repositories.timber.io/public/vector/gpg.3543DB2D0A2BC4B8.key
+vector_version: 0.37.1
+
+vector_config_dir: /etc/vector
+vector_config_file: "{{ vector_config_dir }}/vector.yaml"
+
+vector_ssl_cert_dir: "{{ vector_config_dir }}/ssl"
+vector_ssl_certificates: []
+
+# user-defined value will complete override this config
+vector_config:
+  sources:
+    dummy_logs:
+      type: "demo_logs"
+      format: "syslog"
+      interval: 1
+  transforms:
+    parse_logs:
+      type: "remap"
+      inputs: ["dummy_logs"]
+      source: ". = parse_syslog!(string!(.message))"
+  sinks:
+    print:
+      type: "console"
+      inputs: ["parse_logs"]
+      encoding:
+        codec: "json"

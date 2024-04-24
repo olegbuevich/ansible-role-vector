@@ -6,7 +6,7 @@ vector_config_dir: /etc/vector
 vector_config_file: "{{ vector_config_dir }}/vector.yaml"
 
 vector_ssl_cert_dir: "{{ vector_config_dir }}/ssl"
-vector_ssl_certificates: []
+vector_ssl_certificates: {}
 
 # user-defined value will complete override this config
 vector_config:

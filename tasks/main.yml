@@ -16,29 +16,10 @@
   when: vector_version_output.rc != 0 or installed_vector_version is version(vector_version, '<')
   ansible.builtin.include_tasks: "install-{{ ansible_os_family }}.yml"
 
-- name: Provide config file
-  ansible.builtin.template:
-    src: vector.yaml.j2
-    dest: "{{ vector_config_file }}"
-    mode: "0400"
-    owner: vector
-    group: vector
-    validate: vector validate %s
-  notify:
-    - Restart vector
-
-- name: Set config file location
-  ansible.builtin.lineinfile:
-    path: /etc/default/vector
-    regexp: '^VECTOR_CONFIG='
-    line: "VECTOR_CONFIG={{ vector_config_file }}"
-  notify:
-    - Restart vector
-
 - name: Create SSL certificates directory
   when: vector_ssl_certificates | length > 0
   ansible.builtin.file:
-    path: "{{ vector_ssl_cert_dir }}/ssl"
+    path: "{{ vector_ssl_cert_dir }}"
     state: directory
     mode: "0700"
     owner: vector
@@ -47,14 +28,33 @@
 - name: Provide SSL certificates
   when: vector_ssl_certificates | length > 0
   ansible.builtin.copy:
-    content: "{{ item.content }}"
-    dest: "/etc/vector/ssl/{{ item.filename }}"
+    content: "{{ item.value.content }}"
+    dest: "{{ vector_ssl_cert_dir }}/{{ item.value.filename }}"
     owner: vector
     group: vector
     mode: "0400"
   with_items:
-    - "{{ vector_ssl_certificates }}"
+    - "{{ vector_ssl_certificates | dict2items }}"
   no_log: true
+  notify:
+    - Restart vector
+
+- name: Provide config file
+  ansible.builtin.template:
+    src: vector.yaml.j2
+    dest: "{{ vector_config_file }}"
+    mode: "0400"
+    owner: vector
+    group: vector
+    validate: vector validate --config-yaml %s
+  notify:
+    - Restart vector
+
+- name: Set config file location
+  ansible.builtin.lineinfile:
+    path: /etc/default/vector
+    regexp: '^VECTOR_CONFIG='
+    line: "VECTOR_CONFIG={{ vector_config_file }}"
   notify:
     - Restart vector
 

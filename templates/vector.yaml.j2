@@ -1,2 +1,2 @@
 {{ ansible_managed | comment }}
-{{ vector_config | to_yaml(indent=2) }}
+{{ vector_config | to_nice_yaml(indent=2,sort_keys=false) }}
